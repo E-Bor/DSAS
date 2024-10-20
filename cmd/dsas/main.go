@@ -2,8 +2,8 @@ package main
 
 import (
 	"DSAS2/configs"
-	"DSAS2/internal/app/reports_registry"
 	"DSAS2/internal/config"
+	"DSAS2/internal/reports_registry"
 	"DSAS2/pkg/config_loader"
 	"DSAS2/pkg/dsas_logger"
 	"fmt"
