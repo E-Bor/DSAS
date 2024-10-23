@@ -1,62 +1,62 @@
 package main
 
 import (
-	"DSAS2/configs"
-	"DSAS2/internal/config"
-	"DSAS2/internal/reports_registry"
-	"DSAS2/pkg/config_loader"
-	"DSAS2/pkg/dsas_logger"
-	"fmt"
+	"DSAS/configs"
+	"DSAS/internal/app"
+	"DSAS/internal/config"
+	"DSAS/pkg/config_loader"
+	"DSAS/pkg/dsas_logger"
 	"log/slog"
 )
 
 func main() {
-	dsas_logger.SetDefaultSlog()
+	mainConfig, dsasConfig, err := mustLoad()
 
-	mainConf, err := config_loader.LoadConfig(
+	if err != nil {
+		return
+	}
+	dsas, err := app.NewApp(
+		slog.Default(),
+		mainConfig,
+		dsasConfig,
+	)
+
+	err = dsas.Start()
+	if err != nil {
+		slog.Error(err.Error())
+	}
+}
+
+func mustLoad() (
+	*configs.MainConfig,
+	*config.DsasConfig,
+	error,
+) {
+	const op = "dsas.mustLoad"
+	slog.With(
+		"op",
+		op,
+	)
+	mainConfig, err := config_loader.LoadConfig(
 		"configs/config.yaml",
 		&configs.MainConfig{},
 	)
 	if err != nil {
-		return
+		slog.Error(err.Error())
+		return nil, nil, err
 	}
 
 	dsasConfig, err := config_loader.LoadConfig(
-		mainConf.ConfigPath.DsasConfig,
+		mainConfig.ConfigPath.DsasConfig,
 		&config.DsasConfig{},
 	)
 
 	if err != nil {
-		return
-	}
-
-	reportMap, err := reports_registry.NewReportRegistry(dsasConfig.IntegrationsDir)
-
-	fmt.Println(reportMap)
-	if err != nil {
 		slog.Error(err.Error())
-		return
+		return nil, nil, err
 	}
 
-	rep1, err := reportMap.Get(
-		"facebook",
-		"get_pet_report",
-	)
-	rep3, err := reportMap.Get(
-		"facebook",
-		"get_store_report",
-	)
+	dsas_logger.SetDefaultSlog(mainConfig.Env)
 
-	rep2, err := reportMap.Get(
-		"instagram",
-		"get_store_report",
-	)
-
-	err = rep2()
-	err = rep1()
-	err = rep3()
-
-	if err != nil {
-		return
-	}
+	return mainConfig, dsasConfig, nil
 }

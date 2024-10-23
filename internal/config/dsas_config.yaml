@@ -2,4 +2,4 @@
 integrations_dir: "internal/data_sources"
 
 core_api:
-  startup_host: "localhost:8000"
+  startup_port: 44044

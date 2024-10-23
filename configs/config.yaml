@@ -1,2 +1,3 @@
+env: "LOCAL"       # enum: LOCAL, DEV, PROD
 config_path:
   dsas_config_path: "internal/config/dsas_config.yaml"
