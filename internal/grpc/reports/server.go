@@ -3,7 +3,6 @@ package reports
 import (
 	"context"
 	reportsv1 "github.com/E-Bor/DSAS_Proto/gen/go/report_handlers"
-	"log/slog"
 )
 import "google.golang.org/grpc"
 
@@ -14,17 +13,17 @@ type serverAPI struct {
 func RegisterReport(gRPC *grpc.Server) {
 	reportsv1.RegisterReportServer(
 		gRPC,
-		serverAPI{},
+		&serverAPI{},
 	)
 }
 
-func (a serverAPI) Start(
+func (a *serverAPI) Start(
 	ctx context.Context,
 	req *reportsv1.StartRequest,
 ) (
 	*reportsv1.StartResponse,
 	error,
 ) {
-	slog.Info("HELOHELO")
+
 	return nil, nil
 }

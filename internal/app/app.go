@@ -55,7 +55,7 @@ func (a App) Start() error {
 		syscall.SIGTERM,
 	)
 
-	// block until sys calls
+	// block until sys call
 	<-stop
 	err := a.gRPCServer.Stop()
 	if err != nil {
