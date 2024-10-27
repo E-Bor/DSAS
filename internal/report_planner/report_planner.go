@@ -63,15 +63,8 @@ func (p *ReportPlanner) Add(
 	dateFrom time.Time,
 	dateTo time.Time,
 ) {
-	const op = "report_planner.addReportToQueue"
-	log := p.log.With(
-		slog.String(
-			"operation",
-			op,
-		),
-	)
 	traceId := p.generateTraceId()
-	log.Info(
+	p.log.Info(
 		"add report to queue",
 		"reportName",
 		reportName,
@@ -107,13 +100,6 @@ func (p *ReportPlanner) Add(
 }
 
 func (p *ReportPlanner) Get() chan *reportQueueItem {
-	const op = "report_planner.Get"
-	log := p.log.With(
-		slog.String(
-			"operation",
-			op,
-		),
-	)
 	ch := make(
 		chan *reportQueueItem,
 		reportGeneratorChannelBuffer,
@@ -129,23 +115,16 @@ func (p *ReportPlanner) Get() chan *reportQueueItem {
 			}
 			ch <- p.reportsLocalQueue.Remove(currentItem).(*reportQueueItem)
 		}
-	}(log)
+	}(p.log)
 	return ch
 }
 
 func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
-	const op = "report_planner.addReportToQueue"
-	log := p.log.With(
-		slog.String(
-			"operation",
-			op,
-		),
-	)
 	rep := p.reportsLocalQueue.Front()
 
 	if rep == nil {
 		p.reportsLocalQueue.PushBack(item)
-		log.Info(
+		p.log.Info(
 			"Report Added to queue",
 			"TraceId",
 			item.traceId,
@@ -162,7 +141,7 @@ func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
 					item,
 					rep,
 				)
-				log.Info(
+				p.log.Info(
 					"Report Added to queue",
 					"TraceId",
 					item.traceId,
@@ -176,7 +155,7 @@ func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
 				item,
 				rep,
 			)
-			log.Info(
+			p.log.Info(
 				"Report Added to queue",
 				"TraceId",
 				item.traceId,

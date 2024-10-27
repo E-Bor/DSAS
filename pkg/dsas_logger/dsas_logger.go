@@ -27,21 +27,30 @@ func SetDefaultSlog(logLvl LogLvl) {
 		logger = slog.New(
 			slog.NewTextHandler(
 				os.Stdout,
-				&slog.HandlerOptions{Level: slog.LevelDebug},
+				&slog.HandlerOptions{
+					Level:     slog.LevelDebug,
+					AddSource: true,
+				},
 			),
 		)
 	case EnvDev:
 		logger = slog.New(
 			slog.NewJSONHandler(
 				os.Stdout,
-				&slog.HandlerOptions{Level: slog.LevelDebug},
+				&slog.HandlerOptions{
+					Level:     slog.LevelDebug,
+					AddSource: true,
+				},
 			),
 		)
 	case EnvProd:
 		logger = slog.New(
 			slog.NewJSONHandler(
 				os.Stdout,
-				&slog.HandlerOptions{Level: slog.LevelInfo},
+				&slog.HandlerOptions{
+					Level:     slog.LevelInfo,
+					AddSource: true,
+				},
 			),
 		)
 	}

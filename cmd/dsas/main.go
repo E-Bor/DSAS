@@ -32,11 +32,6 @@ func mustLoad() (
 	*config.DsasConfig,
 	error,
 ) {
-	const op = "dsas.mustLoad"
-	slog.With(
-		"op",
-		op,
-	)
 	mainConfig, err := config_loader.LoadConfig(
 		"configs/config.yaml",
 		&configs.MainConfig{},

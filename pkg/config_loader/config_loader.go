@@ -13,7 +13,6 @@ func LoadConfig[T any](
 	*T,
 	error,
 ) {
-
 	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		slog.Error(

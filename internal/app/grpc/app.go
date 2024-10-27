@@ -32,13 +32,6 @@ func NewGRPCServer(
 }
 
 func (app *GRPCServer) Start() {
-	const path = "app.start"
-	log := app.log.With(
-		slog.String(
-			"op",
-			path,
-		),
-	)
 	l, err := net.Listen(
 		"tcp",
 		fmt.Sprintf(
@@ -50,27 +43,20 @@ func (app *GRPCServer) Start() {
 		slog.Error(err.Error())
 		return
 	}
-	log.Info(
+	app.log.Info(
 		"starting server in port",
 		"port",
 		l.Addr().String(),
 	)
 
 	if err := app.gRPCServer.Serve(l); err != nil {
-		log.Error(err.Error())
+		app.log.Error(err.Error())
 		return
 	}
 }
 
 func (app *GRPCServer) Stop() error {
-	const path = "app.stop"
-	log := app.log.With(
-		slog.String(
-			"op",
-			path,
-		),
-	)
-	log.Info("stopping server")
+	app.log.Info("stopping server")
 	app.gRPCServer.GracefulStop()
 	return nil
 }
