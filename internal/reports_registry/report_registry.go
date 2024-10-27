@@ -11,9 +11,17 @@ import (
 
 const logPath = "internal.core.report_registry"
 
+type ReportResultItem struct {
+	TraceId string
+	Result  []map[string]interface{}
+	Err     error
+}
+
+type ReportFunction func(traceId string) *ReportResultItem
+
 type ReportRegistry struct {
 	baseDir   string
-	reportMap map[string]func() error
+	reportMap map[string]ReportFunction
 }
 
 func NewReportRegistry(baseDir string) (
@@ -26,7 +34,7 @@ func NewReportRegistry(baseDir string) (
 }
 
 func (r *ReportRegistry) getReportsFromAllIntegrations() error {
-	result := make(map[string]func() error)
+	result := make(map[string]ReportFunction)
 	slog.Info(
 		"created new report map",
 		"path",
@@ -66,13 +74,14 @@ func (r *ReportRegistry) getReportsFromAllIntegrations() error {
 					)
 				}
 
-				reportFunc, ok := symReport.(func() error)
+				rt, ok := symReport.(func(traceId string) *ReportResultItem)
 				if !ok {
 					return fmt.Errorf(
 						"symbol Report is not of type func() in %s",
 						pluginPath,
 					)
 				}
+				reportFunc := ReportFunction(rt)
 
 				// key in format "datasource_name_some_report"
 				parts := strings.Split(
@@ -105,7 +114,7 @@ func (r *ReportRegistry) getReportsFromAllIntegrations() error {
 }
 
 func (r *ReportRegistry) Get(dataSource, reportType string) (
-	func() error,
+	ReportFunction,
 	error,
 ) {
 	reportName := fmt.Sprintf(

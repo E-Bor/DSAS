@@ -43,15 +43,15 @@ func NewReportPlanner(
 	}
 }
 
-type reportQueueItem struct {
+type ReportQueueItem struct {
 	reportName      string
-	reportFunction  func() error
+	ReportFunction  func() error
 	estimatedDate   time.Time
 	loadingDuration time.Duration
-	traceId         string
+	TraceId         string
 }
 
-func (i *reportQueueItem) GetReserveTime() time.Duration {
+func (i *ReportQueueItem) GetReserveTime() time.Duration {
 	now := time.Now().UTC()
 	return i.estimatedDate.Sub(now.Add(i.loadingDuration))
 }
@@ -74,7 +74,7 @@ func (p *ReportPlanner) Add(
 		dateTo,
 		"estimatedDate",
 		estimatedDate,
-		"traceId",
+		"TraceId",
 		traceId,
 	)
 
@@ -89,19 +89,19 @@ func (p *ReportPlanner) Add(
 
 	loadingDuration := time.Duration(dateTo.Add(24*time.Hour).Sub(dateFrom).Hours()/24) * loadingStatDuration
 
-	item := &reportQueueItem{
+	item := &ReportQueueItem{
 		reportName:      reportName,
-		reportFunction:  reportFunc,
+		ReportFunction:  reportFunc,
 		estimatedDate:   estimatedDate.UTC(),
 		loadingDuration: loadingDuration,
-		traceId:         traceId,
+		TraceId:         traceId,
 	}
 	p.addReportItemToQueue(item)
 }
 
-func (p *ReportPlanner) Get() chan *reportQueueItem {
+func (p *ReportPlanner) Get() chan *ReportQueueItem {
 	ch := make(
-		chan *reportQueueItem,
+		chan *ReportQueueItem,
 		reportGeneratorChannelBuffer,
 	)
 
@@ -113,13 +113,13 @@ func (p *ReportPlanner) Get() chan *reportQueueItem {
 				time.Sleep(queueSleepTime)
 				continue
 			}
-			ch <- p.reportsLocalQueue.Remove(currentItem).(*reportQueueItem)
+			ch <- p.reportsLocalQueue.Remove(currentItem).(*ReportQueueItem)
 		}
 	}(p.log)
 	return ch
 }
 
-func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
+func (p *ReportPlanner) addReportItemToQueue(item *ReportQueueItem) {
 	rep := p.reportsLocalQueue.Front()
 
 	if rep == nil {
@@ -127,13 +127,13 @@ func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
 		p.log.Info(
 			"Report Added to queue",
 			"TraceId",
-			item.traceId,
+			item.TraceId,
 		)
 		return
 	}
 
 	for i := 0; i <= p.reportsLocalQueue.Len(); i++ {
-		currRep := rep.Value.(*reportQueueItem)
+		currRep := rep.Value.(*ReportQueueItem)
 		if currRep.GetReserveTime() <= item.GetReserveTime() {
 			next := rep.Next()
 			if next == nil {
@@ -144,7 +144,7 @@ func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
 				p.log.Info(
 					"Report Added to queue",
 					"TraceId",
-					item.traceId,
+					item.TraceId,
 				)
 				break
 			} else {
@@ -158,7 +158,7 @@ func (p *ReportPlanner) addReportItemToQueue(item *reportQueueItem) {
 			p.log.Info(
 				"Report Added to queue",
 				"TraceId",
-				item.traceId,
+				item.TraceId,
 			)
 			break
 		}
@@ -180,14 +180,14 @@ func (p *ReportPlanner) generateTraceId() string {
 	return string(b)
 }
 
-func (p *ReportPlanner) GetAllSequence() []*reportQueueItem {
-	var sequence []*reportQueueItem
+func (p *ReportPlanner) GetAllSequence() []*ReportQueueItem {
+	var sequence []*ReportQueueItem
 	currentItem := p.reportsLocalQueue.Front()
 	for {
 		if currentItem == nil {
 			return sequence
 		}
-		item := currentItem.Value.(*reportQueueItem)
+		item := currentItem.Value.(*ReportQueueItem)
 		sequence = append(
 			sequence,
 			item,

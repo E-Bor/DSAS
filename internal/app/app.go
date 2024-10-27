@@ -11,10 +11,14 @@ import (
 	"syscall"
 )
 
+type dsasCore struct {
+	reportMap *reports_registry.ReportRegistry
+}
+
 type App struct {
 	gRPCServer *grpc_server.GRPCServer
 	log        slog.Logger
-	reportMap  *reports_registry.ReportRegistry
+	core       dsasCore
 }
 
 func NewApp(
@@ -35,10 +39,12 @@ func NewApp(
 		return nil, err
 	}
 
+	core := dsasCore{reportMap: reportMap}
+
 	return &App{
 		gRPCServer: server,
 		log:        *log,
-		reportMap:  reportMap,
+		core:       core,
 	}, nil
 }
 

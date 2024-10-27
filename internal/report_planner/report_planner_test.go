@@ -212,11 +212,11 @@ func TestReportPlanner_Get(t *testing.T) {
 
 	tests := []struct {
 		name string
-		want chan *reportQueueItem
+		want chan *ReportQueueItem
 	}{
 		{
 			name: "get should return channel",
-			want: make(chan *reportQueueItem),
+			want: make(chan *ReportQueueItem),
 		},
 	}
 	localStorage := mocks.NewAverageLoadingStorage(t)

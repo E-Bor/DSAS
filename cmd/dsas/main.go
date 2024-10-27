@@ -13,6 +13,7 @@ func main() {
 	mainConfig, dsasConfig, err := mustLoad()
 
 	if err != nil {
+		slog.Error(err.Error())
 		return
 	}
 	dsas, err := app.NewApp(
@@ -20,7 +21,10 @@ func main() {
 		mainConfig,
 		dsasConfig,
 	)
-
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
 	err = dsas.Start()
 	if err != nil {
 		slog.Error(err.Error())
