@@ -18,7 +18,7 @@ type Worker struct {
 }
 
 type AverageLoadingStorage interface {
-	SaveAnalyticsData(
+	SaveAverageLoadingTime(
 		reportName string,
 		loadDuration time.Duration,
 	)
@@ -70,7 +70,7 @@ func (w *Worker) Start(ctx context.Context) {
 			w.outputReportChan <- result
 
 			loadTime := time.Since(timeStart)
-			go w.statStorage.SaveAnalyticsData(
+			go w.statStorage.SaveAverageLoadingTime(
 				job.ReportName,
 				loadTime,
 			)

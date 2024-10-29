@@ -14,7 +14,7 @@ type AverageLoadingStorage struct {
 }
 
 // SaveAnalyticsData provides a mock function with given fields: reportName, loadDuration
-func (_m *AverageLoadingStorage) SaveAnalyticsData(reportName string, loadDuration time.Duration) {
+func (_m *AverageLoadingStorage) SaveAverageLoadingTime(reportName string, loadDuration time.Duration) {
 	_m.Called(reportName, loadDuration)
 }
 
