@@ -2,6 +2,7 @@ package report_planner
 
 import (
 	"DSAS/internal/report_planner/mocks"
+	"DSAS/internal/reports_registry"
 	"container/list"
 	"github.com/stretchr/testify/mock"
 	"log/slog"
@@ -74,7 +75,7 @@ func TestNewReportPlanner(t *testing.T) {
 func TestReportPlanner_Add(t *testing.T) {
 	type reports struct {
 		reportName                      string
-		reportFunc                      func() error
+		reportFunc                      reports_registry.ReportFunction
 		estimatedDate                   time.Time
 		dateFrom                        time.Time
 		dateTo                          time.Time
@@ -91,7 +92,7 @@ func TestReportPlanner_Add(t *testing.T) {
 			reports: []reports{
 				{
 					reportName:                      "Report_1",
-					reportFunc:                      func() error { return nil },
+					reportFunc:                      func(traceId string) *reports_registry.ReportResultItem { return nil },
 					estimatedDate:                   time.Now().Add(20 * time.Hour),
 					dateFrom:                        time.Now().Add(-3 * 24 * time.Hour),
 					dateTo:                          time.Now().Add(-3 * 24 * time.Hour),
@@ -99,7 +100,7 @@ func TestReportPlanner_Add(t *testing.T) {
 				},
 				{
 					reportName:                      "Report_2",
-					reportFunc:                      func() error { return nil },
+					reportFunc:                      func(traceId string) *reports_registry.ReportResultItem { return nil },
 					estimatedDate:                   time.Now().Add(20 * time.Hour),
 					dateFrom:                        time.Now().Add(-3 * 24 * time.Hour),
 					dateTo:                          time.Now().Add(-3 * 24 * time.Hour),
@@ -107,7 +108,7 @@ func TestReportPlanner_Add(t *testing.T) {
 				},
 				{
 					reportName:                      "Report_3",
-					reportFunc:                      func() error { return nil },
+					reportFunc:                      func(traceId string) *reports_registry.ReportResultItem { return nil },
 					estimatedDate:                   time.Now().Add(1 * time.Hour),
 					dateFrom:                        time.Now().Add(-4 * 24 * time.Hour),
 					dateTo:                          time.Now().Add(-3 * 24 * time.Hour),
@@ -115,7 +116,7 @@ func TestReportPlanner_Add(t *testing.T) {
 				},
 				{
 					reportName:                      "Report_4",
-					reportFunc:                      func() error { return nil },
+					reportFunc:                      func(traceId string) *reports_registry.ReportResultItem { return nil },
 					estimatedDate:                   time.Now().Add(2 * time.Minute),
 					dateFrom:                        time.Now().Add(-4 * 24 * time.Hour),
 					dateTo:                          time.Now().Add(-3 * 24 * time.Hour),
@@ -123,7 +124,7 @@ func TestReportPlanner_Add(t *testing.T) {
 				},
 				{
 					reportName:                      "Report_5",
-					reportFunc:                      func() error { return nil },
+					reportFunc:                      func(traceId string) *reports_registry.ReportResultItem { return nil },
 					estimatedDate:                   time.Now().Add(10 * time.Minute),
 					dateFrom:                        time.Now().Add(-4 * 24 * time.Hour),
 					dateTo:                          time.Now().Add(-3 * 24 * time.Hour),
@@ -188,7 +189,7 @@ func TestReportPlanner_Add(t *testing.T) {
 					for _, report := range currentSequence {
 						currentReportNames = append(
 							currentReportNames,
-							report.reportName,
+							report.ReportName,
 						)
 					}
 

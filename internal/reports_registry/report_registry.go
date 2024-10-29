@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const logPath = "internal.core.report_registry"
-
 type ReportResultItem struct {
 	TraceId string
 	Result  []map[string]interface{}
@@ -37,8 +35,6 @@ func (r *ReportRegistry) getReportsFromAllIntegrations() error {
 	result := make(map[string]ReportFunction)
 	slog.Info(
 		"created new report map",
-		"path",
-		logPath,
 	)
 	// walk in datasource dir
 	err := filepath.Walk(
@@ -129,8 +125,6 @@ func (r *ReportRegistry) Get(dataSource, reportType string) (
 			"failed to find report for ",
 			"report name",
 			reportName,
-			"path",
-			logPath,
 		)
 		return nil, fmt.Errorf(
 			"failed to find report %s",

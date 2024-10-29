@@ -1,6 +1,7 @@
 package report_planner
 
 import (
+	"DSAS/internal/reports_registry"
 	"container/list"
 	"crypto/rand"
 	"golang.org/x/net/context"
@@ -44,8 +45,8 @@ func NewReportPlanner(
 }
 
 type ReportQueueItem struct {
-	reportName      string
-	ReportFunction  func() error
+	ReportName      string
+	ReportFunction  reports_registry.ReportFunction
 	estimatedDate   time.Time
 	loadingDuration time.Duration
 	TraceId         string
@@ -58,7 +59,7 @@ func (i *ReportQueueItem) GetReserveTime() time.Duration {
 
 func (p *ReportPlanner) Add(
 	reportName string,
-	reportFunc func() error,
+	reportFunc reports_registry.ReportFunction,
 	estimatedDate time.Time,
 	dateFrom time.Time,
 	dateTo time.Time,
@@ -66,7 +67,7 @@ func (p *ReportPlanner) Add(
 	traceId := p.generateTraceId()
 	p.log.Info(
 		"add report to queue",
-		"reportName",
+		"ReportName",
 		reportName,
 		"DateFrom",
 		dateFrom,
@@ -90,7 +91,7 @@ func (p *ReportPlanner) Add(
 	loadingDuration := time.Duration(dateTo.Add(24*time.Hour).Sub(dateFrom).Hours()/24) * loadingStatDuration
 
 	item := &ReportQueueItem{
-		reportName:      reportName,
+		ReportName:      reportName,
 		ReportFunction:  reportFunc,
 		estimatedDate:   estimatedDate.UTC(),
 		loadingDuration: loadingDuration,
@@ -195,3 +196,5 @@ func (p *ReportPlanner) GetAllSequence() []*ReportQueueItem {
 		currentItem = currentItem.Next()
 	}
 }
+
+// TODO: implement GracefulStop
