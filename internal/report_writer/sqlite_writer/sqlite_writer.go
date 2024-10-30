@@ -4,19 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
+	"log/slog"
 	"time"
 )
 
 type SqliteWriteStorage struct {
 	db           *sql.DB
 	errTableName string
+	log          *slog.Logger
 }
 
 func New(
 	storagePath string,
 	errTableName string,
+	log *slog.Logger,
 ) (
 	*SqliteWriteStorage,
 	error,
@@ -32,6 +35,7 @@ func New(
 	return &SqliteWriteStorage{
 		db:           db,
 		errTableName: errTableName,
+		log:          log,
 	}, nil
 }
 
@@ -52,40 +56,90 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 			reportName,
 		)
 		if err != nil {
+			slog.Error(
+				"failed to create sqlite table",
+				"error",
+				err,
+				"tried table",
+				reportName,
+			)
 			reportName = fmt.Sprintf(
 				"temp_table_%s_%s",
 				reportName,
 				TraceId,
 			)
 		}
+		err = s.createTableByReportName(
+			ctx,
+			reportName,
+		)
+		if err != nil {
+			slog.Error(
+				"retry to create sqlite table failed",
+				"error",
+				err,
+				"tried table",
+				reportName,
+			)
+		}
 	}
 
-	insert := s.getQueryForBatchInsert(
+	tx, err := s.db.BeginTx(
+		ctx,
+		nil,
+	)
+	if err != nil {
+		s.log.Error(
+			"failed to begin tx",
+			"error",
+			err,
+		)
+	}
+
+	inserts := s.getBatchInsertQueries(
 		resultRows,
 		reportName,
 	)
-	stmt, err := s.db.Prepare(insert)
-	defer stmt.Close()
-	if err != nil {
-		return
+	for _, query := range inserts {
+		_, err := tx.ExecContext(
+			ctx,
+			query,
+		)
+		if err != nil {
+			tx.Rollback()
+			s.log.Error(
+				"failed to execute transaction",
+				"query",
+				query,
+				"error",
+				err,
+			)
+		}
 	}
-	_, err = stmt.ExecContext(
-		ctx,
-	)
+
+	err = tx.Commit()
+
+	if err != nil {
+		s.log.Error(
+			"failed to commit transaction",
+			"error",
+			err,
+		)
+	}
 }
 
-func (s SqliteWriteStorage) SaveReportFailedResult(
+func (s *SqliteWriteStorage) SaveReportFailedResult(
 	reportName string,
-	TraceId string,
-	err error,
+	traceId string,
+	repError error,
 ) {
 	ctx := context.Background()
-
+	query := fmt.Sprintf(
+		"INSERT INTO %s(report_type_name, trace_id, load_error) VALUES (?, ?, ?)",
+		s.errTableName,
+	)
 	stmt, err := s.db.Prepare(
-		fmt.Sprintf(
-			"INSERT INTO %s(report_name, trace_id, load_error) VALUES (?, ?, ?)",
-			s.errTableName,
-		),
+		fmt.Sprintf(query),
 	)
 	defer stmt.Close()
 	if err != nil {
@@ -95,10 +149,17 @@ func (s SqliteWriteStorage) SaveReportFailedResult(
 	_, err = stmt.ExecContext(
 		ctx,
 		reportName,
-		TraceId,
-		err,
+		traceId,
+		repError.Error(),
 	)
-
+	if err != nil {
+		s.log.Error(
+			"error save failed result",
+			"err",
+			err,
+		)
+		return
+	}
 }
 
 func (s *SqliteWriteStorage) tableExists(
@@ -108,16 +169,33 @@ func (s *SqliteWriteStorage) tableExists(
 	stmt, err := s.db.Prepare("SELECT name FROM sqlite_master WHERE type='table' AND name= ?")
 	defer stmt.Close()
 	if err != nil {
+		s.log.Error(
+			"error prepare request to fetch exist tables",
+			err,
+		)
 		return false
 	}
 	row := stmt.QueryRowContext(
 		ctx,
-		stmt,
 		tableName,
 	)
 	var table string
 	err = row.Scan(&table)
-	if err != nil || table == "" {
+
+	if err != nil {
+		if errors.Is(
+			err,
+			sql.ErrNoRows,
+		) {
+			return false
+		}
+		s.log.Error(
+			"error fetch exist tables",
+			"err",
+			err,
+			"tableName",
+			tableName,
+		)
 		return false
 	}
 	return true
@@ -136,14 +214,18 @@ func (s *SqliteWriteStorage) createTableByReportName(
 		tableName,
 	)
 
-	stmt, err := s.db.Prepare(query)
+	_, err := s.db.ExecContext(
+		ctx,
+		query,
+	)
 	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.ExecContext(ctx)
-	if err != nil {
+		s.log.Error(
+			"failed to execute create table statement",
+			"error",
+			err,
+			"tableName",
+			tableName,
+		)
 		return err
 	}
 
@@ -151,50 +233,43 @@ func (s *SqliteWriteStorage) createTableByReportName(
 }
 
 // crunch, don`t secure
-func (s SqliteWriteStorage) getQueryForBatchInsert(
+// TODO: Refactor batch insert
+func (s *SqliteWriteStorage) getBatchInsertQueries(
 	resultRows []map[string]interface{},
 	tableName string,
-) string {
+) []string {
 	var inserts []string
 	for _, resultRow := range resultRows {
 		if len(resultRow) == 0 {
 			continue
 		}
+
 		date, _ := resultRow["date"].(string)
 		if date == "" {
 			year, month, day := time.Now().UTC().Date()
 			date = fmt.Sprintf(
-				"%d-%d-%d",
+				"%d-%02d-%02d",
 				year,
 				month,
 				day,
 			)
 		}
+
 		jsonRow, err := json.Marshal(resultRow)
 		if err != nil {
-			return ""
+			continue
 		}
 
-		insterRow := fmt.Sprintf(
-			"INSERT INTO %s (report_date, info) VALUES (%s, %s);",
+		insertRow := fmt.Sprintf(
+			"INSERT INTO %s (report_date, info) VALUES ('%s', '%s');",
 			tableName,
 			date,
-			jsonRow,
+			string(jsonRow),
 		)
 		inserts = append(
 			inserts,
-			insterRow,
+			insertRow,
 		)
 	}
-	if len(inserts) > 0 {
-		query := fmt.Sprintf(
-			"BEGIN TRANSACTION;\n %s \n COMMIT;",
-			strings.Join(
-				inserts,
-				"\n ",
-			),
-		)
-		return query
-	}
-	return ""
+	return inserts
 }

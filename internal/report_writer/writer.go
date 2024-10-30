@@ -1,6 +1,16 @@
 package report_writer
 
-import "DSAS/internal/reports_registry"
+import (
+	"DSAS/internal/report_writer/sqlite_writer"
+	"DSAS/internal/reports_registry"
+	"log/slog"
+)
+
+type WriterType string
+
+const (
+	SQLiteWriter WriterType = "sqlite"
+)
 
 type storageForWriteReport interface {
 	SaveReportFailedResult(
@@ -18,32 +28,58 @@ type storageForWriteReport interface {
 type Writer struct {
 	storage storageForWriteReport
 	dataCh  <-chan *reports_registry.ReportResultItem
+	log     *slog.Logger
 }
 
 func New(
-	storage storageForWriteReport,
 	dataCh <-chan *reports_registry.ReportResultItem,
+	writerType WriterType,
+	storagePath string,
+	errTableName string,
+	logger *slog.Logger,
 ) *Writer {
-	return &Writer{
-		storage: storage,
-		dataCh:  dataCh,
-	}
-}
 
-func (w Writer) storeAllData() {
-	select {
-	case reportLoadResult := <-w.dataCh:
-		if reportLoadResult.Err != nil {
-			w.storage.SaveReportFailedResult(
-				reportLoadResult.ReportName,
-				reportLoadResult.TraceId,
-				reportLoadResult.Err,
+	var writer Writer
+
+	writer.dataCh = dataCh
+	writer.log = logger
+
+	switch writerType {
+	case SQLiteWriter:
+		sqlWriter, err := sqlite_writer.New(
+			storagePath,
+			errTableName,
+			logger,
+		)
+		if err != nil {
+			slog.Default().Error(
+				"Failed to create sqlite writer",
+				"error",
+				err,
 			)
 		}
-		w.storage.SaveReportSuccessResult(
-			reportLoadResult.ReportName,
-			reportLoadResult.TraceId,
-			reportLoadResult.Result,
-		)
+		writer.storage = sqlWriter
+	}
+	return &writer
+}
+
+func (w Writer) StoreAllData() {
+	for {
+		select {
+		case reportLoadResult := <-w.dataCh:
+			if reportLoadResult.Err != nil {
+				w.storage.SaveReportFailedResult(
+					reportLoadResult.ReportName,
+					reportLoadResult.TraceId,
+					reportLoadResult.Err,
+				)
+			} else {
+				w.storage.SaveReportSuccessResult(
+					reportLoadResult.ReportName,
+					reportLoadResult.TraceId,
+					reportLoadResult.Result,
+				)
+			}
+		}
 	}
 }
