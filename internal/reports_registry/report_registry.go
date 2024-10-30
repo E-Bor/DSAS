@@ -10,9 +10,10 @@ import (
 )
 
 type ReportResultItem struct {
-	TraceId string
-	Result  []map[string]interface{}
-	Err     error
+	TraceId    string
+	ReportName string
+	Result     []map[string]interface{}
+	Err        error
 }
 
 type ReportFunction func(traceId string) *ReportResultItem

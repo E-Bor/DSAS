@@ -18,7 +18,7 @@ type WorkerPool struct {
 	workersExpectedCount int
 	workersCurrenCount   int
 	inputChan            <-chan *report_planner.ReportQueueItem
-	outputChan           chan<- *reports_registry.ReportResultItem
+	OutputChan           chan<- *reports_registry.ReportResultItem
 	workersCancel        context.CancelFunc
 	statStorage          worker.AverageLoadingStorage
 }
@@ -37,7 +37,7 @@ func NewWorkerPool(
 		log:                  logger,
 		workersExpectedCount: workerCount,
 		inputChan:            inputChan,
-		outputChan:           outputChan,
+		OutputChan:           outputChan,
 		statStorage:          statStorage,
 	}
 }
@@ -51,7 +51,7 @@ func (w *WorkerPool) Start(ctx context.Context) {
 			w.log,
 			i,
 			w.inputChan,
-			w.outputChan,
+			w.OutputChan,
 			workerSleepTime,
 			w.statStorage,
 		)
@@ -61,5 +61,5 @@ func (w *WorkerPool) Start(ctx context.Context) {
 
 func (w *WorkerPool) Stop() {
 	w.workersCancel()
-	close(w.outputChan)
+	close(w.OutputChan)
 }

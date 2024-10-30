@@ -63,7 +63,7 @@ func (p *ReportPlanner) Add(
 	estimatedDate time.Time,
 	dateFrom time.Time,
 	dateTo time.Time,
-) {
+) string {
 	traceId := p.generateTraceId()
 	p.log.Info(
 		"add report to queue",
@@ -85,7 +85,7 @@ func (p *ReportPlanner) Add(
 		reportName,
 	)
 	if err != nil {
-		return
+		return ""
 	}
 
 	loadingDuration := time.Duration(dateTo.Add(24*time.Hour).Sub(dateFrom).Hours()/24) * loadingStatDuration
@@ -98,6 +98,7 @@ func (p *ReportPlanner) Add(
 		TraceId:         traceId,
 	}
 	p.addReportItemToQueue(item)
+	return traceId
 }
 
 func (p *ReportPlanner) Get() chan *ReportQueueItem {

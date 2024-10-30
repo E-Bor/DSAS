@@ -5,6 +5,7 @@ import (
 	grpc_server "DSAS/internal/app/grpc"
 	"DSAS/internal/config"
 	"DSAS/internal/reports_registry"
+	"DSAS/internal/storage"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 
 type dsasCore struct {
 	reportMap *reports_registry.ReportRegistry
+	storage   storage.Storage
 }
 
 type App struct {
@@ -34,12 +36,21 @@ func NewApp(
 		dsasConfig.CoreApiConfig.StartupHost,
 	)
 
+	sqlite, err := storage.NewStorage(
+		storage.SQLite,
+		mainConfig.SQLiteStoragePath,
+	)
+	if err != nil {
+		return nil, err
+	}
 	reportMap, err := reports_registry.NewReportRegistry(dsasConfig.IntegrationsDir)
 	if err != nil {
 		return nil, err
 	}
-
-	core := dsasCore{reportMap: reportMap}
+	core := dsasCore{
+		reportMap: reportMap,
+		storage:   sqlite,
+	}
 
 	return &App{
 		gRPCServer: server,
