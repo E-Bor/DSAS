@@ -230,10 +230,10 @@ func TestReportPlanner_Get(t *testing.T) {
 		t.Run(
 			tt.name,
 			func(t *testing.T) {
-				currentChannel := reportPlanner.Get()
+				currentChannel := reportPlanner.StartPlannedQueue()
 				if reflect.TypeOf(currentChannel) != reflect.TypeOf(tt.want) {
 					t.Errorf(
-						"Get() = %v, want %v",
+						"StartPlannedQueue() = %v, want %v",
 						currentChannel,
 						tt.want,
 					)

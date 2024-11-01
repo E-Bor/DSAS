@@ -18,12 +18,12 @@ type WorkerPool struct {
 	workersExpectedCount int
 	workersCurrenCount   int
 	inputChan            <-chan *report_planner.ReportQueueItem
-	OutputChan           chan<- *reports_registry.ReportResultItem
+	OutputChan           chan *reports_registry.ReportResultItem
 	workersCancel        context.CancelFunc
 	statStorage          worker.AverageLoadingStorage
 }
 
-func NewWorkerPool(
+func New(
 	logger *slog.Logger,
 	inputChan <-chan *report_planner.ReportQueueItem,
 	workerCount int,

@@ -101,7 +101,7 @@ func (p *ReportPlanner) Add(
 	return traceId
 }
 
-func (p *ReportPlanner) Get() chan *ReportQueueItem {
+func (p *ReportPlanner) StartPlannedQueue() <-chan *ReportQueueItem {
 	ch := make(
 		chan *ReportQueueItem,
 		reportGeneratorChannelBuffer,

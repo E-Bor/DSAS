@@ -100,32 +100,33 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 		resultRows,
 		reportName,
 	)
-	for _, query := range inserts {
+	for _, insert := range inserts {
 		_, err := tx.ExecContext(
 			ctx,
-			query,
+			insert.query,
+			insert.args...,
 		)
 		if err != nil {
 			tx.Rollback()
 			s.log.Error(
 				"failed to execute transaction",
 				"query",
-				query,
+				insert.query,
 				"error",
 				err,
 			)
+			return
 		}
 	}
 
-	err = tx.Commit()
-
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		s.log.Error(
 			"failed to commit transaction",
 			"error",
 			err,
 		)
 	}
+
 }
 
 func (s *SqliteWriteStorage) SaveReportFailedResult(
@@ -232,13 +233,18 @@ func (s *SqliteWriteStorage) createTableByReportName(
 	return nil
 }
 
-// crunch, don`t secure
-// TODO: Refactor batch insert
 func (s *SqliteWriteStorage) getBatchInsertQueries(
 	resultRows []map[string]interface{},
 	tableName string,
-) []string {
-	var inserts []string
+) []struct {
+	query string
+	args  []interface{}
+} {
+	var inserts []struct {
+		query string
+		args  []interface{}
+	}
+
 	for _, resultRow := range resultRows {
 		if len(resultRow) == 0 {
 			continue
@@ -260,16 +266,24 @@ func (s *SqliteWriteStorage) getBatchInsertQueries(
 			continue
 		}
 
-		insertRow := fmt.Sprintf(
-			"INSERT INTO %s (report_date, info) VALUES ('%s', '%s');",
-			tableName,
-			date,
-			string(jsonRow),
-		)
+		insertRow := struct {
+			query string
+			args  []interface{}
+		}{
+			query: fmt.Sprintf(
+				"INSERT INTO %s (report_date, info) VALUES (?, ?);",
+				tableName,
+			),
+			args: []interface{}{
+				date,
+				string(jsonRow),
+			},
+		}
 		inserts = append(
 			inserts,
 			insertRow,
 		)
 	}
+
 	return inserts
 }

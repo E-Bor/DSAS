@@ -64,22 +64,24 @@ func New(
 }
 
 func (w Writer) StoreAllData() {
-	for {
-		select {
-		case reportLoadResult := <-w.dataCh:
-			if reportLoadResult.Err != nil {
-				w.storage.SaveReportFailedResult(
-					reportLoadResult.ReportName,
-					reportLoadResult.TraceId,
-					reportLoadResult.Err,
-				)
-			} else {
-				w.storage.SaveReportSuccessResult(
-					reportLoadResult.ReportName,
-					reportLoadResult.TraceId,
-					reportLoadResult.Result,
-				)
+	go func() {
+		for {
+			select {
+			case reportLoadResult := <-w.dataCh:
+				if reportLoadResult.Err != nil {
+					w.storage.SaveReportFailedResult(
+						reportLoadResult.ReportName,
+						reportLoadResult.TraceId,
+						reportLoadResult.Err,
+					)
+				} else {
+					w.storage.SaveReportSuccessResult(
+						reportLoadResult.ReportName,
+						reportLoadResult.TraceId,
+						reportLoadResult.Result,
+					)
+				}
 			}
 		}
-	}
+	}()
 }

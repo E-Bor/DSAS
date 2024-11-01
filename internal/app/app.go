@@ -2,28 +2,27 @@ package app
 
 import (
 	"DSAS/configs"
+	"DSAS/internal/app/core"
 	grpc_server "DSAS/internal/app/grpc"
 	"DSAS/internal/config"
+	"DSAS/internal/report_loader"
+	"DSAS/internal/report_planner"
 	"DSAS/internal/report_writer"
 	"DSAS/internal/reports_registry"
 	"DSAS/internal/storage"
-	"errors"
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
-type dsasCore struct {
-	reportMap *reports_registry.ReportRegistry
-	storage   storage.Storage
-}
+const workerPoolCount = 3
 
 type App struct {
 	gRPCServer *grpc_server.GRPCServer
-	log        slog.Logger
-	core       dsasCore
+	log        *slog.Logger
+	core       *core.DSASCore
 }
 
 func NewApp(
@@ -47,111 +46,48 @@ func NewApp(
 		return nil, err
 	}
 
-	testCH := make(
-		chan *reports_registry.ReportResultItem,
-		7,
+	reportPlanner := report_planner.NewReportPlanner(
+		log,
+		sqlite,
+	)
+	queueChannel := reportPlanner.StartPlannedQueue()
+
+	reportLoadWorkerPool := report_loader.New(
+		log,
+		queueChannel,
+		workerPoolCount,
+		sqlite,
 	)
 
-	testData := []reports_registry.ReportResultItem{
-		{
-			TraceId:    "trace-12345",
-			ReportName: "sales_report",
-			Result: []map[string]interface{}{
-				{
-					"product":  "Laptop",
-					"quantity": 5,
-					"price":    1000.0,
-				},
-				{
-					"product":  "Smartphone",
-					"quantity": 3,
-					"price":    500.0,
-				},
-			},
-			Err: nil,
-		},
-		{
-			TraceId:    "trace-67890",
-			ReportName: "inventory_report",
-			Result: []map[string]interface{}{
-				{
-					"product": "Tablet",
-					"stock":   20,
-				},
-				{
-					"product": "Monitor",
-					"stock":   15,
-				},
-			},
-			Err: nil,
-		},
-		{
-			TraceId:    "trace-111213",
-			ReportName: "employee_report",
-			Result: []map[string]interface{}{
-				{
-					"employee":     "John Doe",
-					"hours_worked": 40,
-					"department":   "Engineering",
-				},
-				{
-					"employee":     "Jane Smith",
-					"hours_worked": 35,
-					"department":   "Marketing",
-				},
-			},
-			Err: nil,
-		},
-		{
-			TraceId:    "trace-141516",
-			ReportName: "error_report",
-			Result:     nil,
-			Err:        errors.New("failed to generate report due to database error"),
-		},
-		{
-			TraceId:    "trace-171819",
-			ReportName: "financial_report",
-			Result: []map[string]interface{}{
-				{
-					"revenue":  50000,
-					"expenses": 30000,
-					"profit":   20000,
-				},
-				{
-					"revenue":  70000,
-					"expenses": 40000,
-					"profit":   30000,
-				},
-			},
-			Err: nil,
-		},
-	}
-	for _, val := range testData {
-		testCH <- &val
-	}
+	reportLoadWorkerPool.Start(context.Background())
 
-	writer := report_writer.New(
-		testCH,
+	reportWriter := report_writer.New(
+		reportLoadWorkerPool.OutputChan,
 		report_writer.SQLiteWriter,
 		mainConfig.SQLiteStoragePath,
 		"report_errors",
 		log,
 	)
-	go writer.StoreAllData()
-	time.Sleep(10 * time.Second)
+
+	reportWriter.StoreAllData()
+
 	reportMap, err := reports_registry.NewReportRegistry(dsasConfig.IntegrationsDir)
 	if err != nil {
 		return nil, err
 	}
-	core := dsasCore{
-		reportMap: reportMap,
-		storage:   sqlite,
-	}
+
+	dsasCore := core.New(
+		reportMap,
+		sqlite,
+		reportPlanner,
+		reportLoadWorkerPool,
+		reportWriter,
+	)
 
 	return &App{
 		gRPCServer: server,
-		log:        *log,
-		core:       core,
+		log:        log,
+		core:       dsasCore,
 	}, nil
 }
 
