@@ -3,16 +3,21 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	"math"
 	"time"
 )
 
 type Storage struct {
-	db *sql.DB
+	db                     *sql.DB
+	defaultAverageLoadTime int64
 }
 
-func New(storagePath string) (
+func New(
+	storagePath string,
+	defaultAverageLoadTime int64,
+) (
 	*Storage,
 	error,
 ) {
@@ -24,7 +29,10 @@ func New(storagePath string) (
 		return nil, err
 	}
 
-	return &Storage{db: db}, nil
+	return &Storage{
+		db:                     db,
+		defaultAverageLoadTime: defaultAverageLoadTime,
+	}, nil
 }
 func (s *Storage) GetAverageLoadingTime(
 	ctx context.Context,
@@ -46,8 +54,11 @@ func (s *Storage) GetAverageLoadingTime(
 	var avgInSeconds int64
 	err = row.Scan(&avgInSeconds)
 
-	if err != nil {
-		return 0, err
+	if errors.Is(
+		err,
+		sql.ErrNoRows,
+	) {
+		avgInSeconds = s.defaultAverageLoadTime
 	}
 	avgDuration := time.Duration(avgInSeconds) * time.Second
 	return avgDuration, nil

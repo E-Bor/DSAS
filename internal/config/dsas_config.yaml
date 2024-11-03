@@ -1,5 +1,12 @@
 
 integrations_dir: "internal/data_sources"
-
 core_api:
   startup_port: 44044
+dsas_core_config:
+  load_workers_count: 6
+  default_average_load_time: 25 # seconds
+  trace_id_length: 28
+  queue_length: 100
+  queue_sleep_time: 5
+  worker_pool_channel_buffer_size: 100
+  worker_sleep_time: 2

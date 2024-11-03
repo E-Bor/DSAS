@@ -1,6 +1,8 @@
 package reports_registry
 
 import (
+	"DSAS/internal/dsas_errors"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -33,6 +35,7 @@ func NewReportRegistry(baseDir string) (
 }
 
 func (r *ReportRegistry) getReportsFromAllIntegrations() error {
+	const op = "report_registry.getReportsFromAllIntegrations"
 	result := make(map[string]ReportFunction)
 	slog.Info(
 		"created new report map",
@@ -56,25 +59,29 @@ func (r *ReportRegistry) getReportsFromAllIntegrations() error {
 				pluginPath := path
 				p, err := plugin.Open(pluginPath)
 				if err != nil {
-					return fmt.Errorf(
-						"failed to open plugin %s: %v",
-						pluginPath,
+					return dsas_errors.NewInternalError(
+						op,
 						err,
+						"failed to open plugin %s",
+						pluginPath,
 					)
 				}
 				symReport, err := p.Lookup("Report")
 				if err != nil {
-					return fmt.Errorf(
-						"failed to find Report in %s: %v",
-						pluginPath,
+					return dsas_errors.NewInternalError(
+						op,
 						err,
+						"failed to find Report in %s",
+						pluginPath,
 					)
 				}
 
 				rt, ok := symReport.(func(traceId string) *ReportResultItem)
 				if !ok {
-					return fmt.Errorf(
-						"symbol Report is not of type func() in %s",
+					return dsas_errors.NewInternalError(
+						op,
+						err,
+						"symbol Report is not of type ReportFunction in %s",
 						pluginPath,
 					)
 				}
@@ -114,22 +121,26 @@ func (r *ReportRegistry) Get(dataSource, reportType string) (
 	ReportFunction,
 	error,
 ) {
+	const op = "report_registry.Get"
 	reportName := fmt.Sprintf(
 		"%s_%s",
 		dataSource,
 		reportType,
 	)
-
 	reportFunc, ok := r.reportMap[reportName]
 	if !ok {
 		slog.Error(
 			"failed to find report for ",
+			"op",
+			op,
 			"report name",
 			reportName,
 		)
-		return nil, fmt.Errorf(
-			"failed to find report %s",
-			reportName,
+		return nil, dsas_errors.NewInternalError(
+			op,
+			errors.New(""),
+			"symbol Report is not of type ReportFunction in %s",
+			reportType,
 		)
 	}
 	return reportFunc, nil

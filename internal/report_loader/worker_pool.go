@@ -9,10 +9,6 @@ import (
 	"time"
 )
 
-// TODO: move to config
-const reportWorkerPoolChannelBuffer = 100
-const workerSleepTime = 2 * time.Second
-
 type WorkerPool struct {
 	log                  *slog.Logger
 	workersExpectedCount int
@@ -21,6 +17,7 @@ type WorkerPool struct {
 	OutputChan           chan *reports_registry.ReportResultItem
 	workersCancel        context.CancelFunc
 	statStorage          worker.AverageLoadingStorage
+	workerSleepDuration  int
 }
 
 func New(
@@ -28,6 +25,8 @@ func New(
 	inputChan <-chan *report_planner.ReportQueueItem,
 	workerCount int,
 	statStorage worker.AverageLoadingStorage,
+	reportWorkerPoolChannelBuffer int,
+	workerSleepDuration int,
 ) *WorkerPool {
 	outputChan := make(
 		chan *reports_registry.ReportResultItem,
@@ -39,6 +38,7 @@ func New(
 		inputChan:            inputChan,
 		OutputChan:           outputChan,
 		statStorage:          statStorage,
+		workerSleepDuration:  workerSleepDuration,
 	}
 }
 
@@ -52,7 +52,7 @@ func (w *WorkerPool) Start(ctx context.Context) {
 			i,
 			w.inputChan,
 			w.OutputChan,
-			workerSleepTime,
+			time.Duration(w.workerSleepDuration)*time.Second,
 			w.statStorage,
 		)
 		go wkr.Start(workerCtx)

@@ -45,6 +45,9 @@ func TestNewReportPlanner(t *testing.T) {
 				got := NewReportPlanner(
 					tt.args.logger,
 					tt.args.averageLoadingStorage,
+					16,
+					5,
+					10,
 				)
 
 				if !reflect.DeepEqual(
@@ -163,6 +166,9 @@ func TestReportPlanner_Add(t *testing.T) {
 	reportPlanner := NewReportPlanner(
 		slog.Default(),
 		localStorage,
+		16,
+		5,
+		10,
 	)
 	for _, tt := range tests {
 		t.Run(
@@ -213,7 +219,7 @@ func TestReportPlanner_Get(t *testing.T) {
 
 	tests := []struct {
 		name string
-		want chan *ReportQueueItem
+		want <-chan *ReportQueueItem
 	}{
 		{
 			name: "get should return channel",
@@ -224,6 +230,9 @@ func TestReportPlanner_Get(t *testing.T) {
 	reportPlanner := NewReportPlanner(
 		slog.Default(),
 		localStorage,
+		16,
+		5,
+		10,
 	)
 
 	for _, tt := range tests {

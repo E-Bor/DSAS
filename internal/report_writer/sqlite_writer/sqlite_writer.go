@@ -44,6 +44,7 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 	TraceId string,
 	resultRows []map[string]interface{},
 ) {
+	const op = "sqlite_writer.SaveReportSuccessResult"
 	ctx := context.Background()
 	tableExist := s.tableExists(
 		ctx,
@@ -58,6 +59,8 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 		if err != nil {
 			slog.Error(
 				"failed to create sqlite table",
+				"op",
+				op,
 				"error",
 				err,
 				"tried table",
@@ -76,6 +79,8 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 		if err != nil {
 			slog.Error(
 				"retry to create sqlite table failed",
+				"op",
+				op,
 				"error",
 				err,
 				"tried table",
@@ -91,6 +96,8 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 	if err != nil {
 		s.log.Error(
 			"failed to begin tx",
+			"op",
+			op,
 			"error",
 			err,
 		)
@@ -110,6 +117,8 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 			tx.Rollback()
 			s.log.Error(
 				"failed to execute transaction",
+				"op",
+				op,
 				"query",
 				insert.query,
 				"error",
@@ -122,6 +131,8 @@ func (s *SqliteWriteStorage) SaveReportSuccessResult(
 	if err := tx.Commit(); err != nil {
 		s.log.Error(
 			"failed to commit transaction",
+			"op",
+			op,
 			"error",
 			err,
 		)
@@ -134,6 +145,7 @@ func (s *SqliteWriteStorage) SaveReportFailedResult(
 	traceId string,
 	repError error,
 ) {
+	const op = "sqlite_writer.SaveReportFailedResult"
 	ctx := context.Background()
 	query := fmt.Sprintf(
 		"INSERT INTO %s(report_type_name, trace_id, load_error) VALUES (?, ?, ?)",
@@ -144,6 +156,13 @@ func (s *SqliteWriteStorage) SaveReportFailedResult(
 	)
 	defer stmt.Close()
 	if err != nil {
+		s.log.Error(
+			"error prepare query for save failed result",
+			"op",
+			op,
+			"err",
+			err,
+		)
 		return
 	}
 
@@ -156,6 +175,8 @@ func (s *SqliteWriteStorage) SaveReportFailedResult(
 	if err != nil {
 		s.log.Error(
 			"error save failed result",
+			"op",
+			op,
 			"err",
 			err,
 		)
@@ -167,11 +188,15 @@ func (s *SqliteWriteStorage) tableExists(
 	ctx context.Context,
 	tableName string,
 ) bool {
+	const op = "sqlite_writer.tableExists"
+
 	stmt, err := s.db.Prepare("SELECT name FROM sqlite_master WHERE type='table' AND name= ?")
 	defer stmt.Close()
 	if err != nil {
 		s.log.Error(
 			"error prepare request to fetch exist tables",
+			"op",
+			op,
 			err,
 		)
 		return false
@@ -192,6 +217,8 @@ func (s *SqliteWriteStorage) tableExists(
 		}
 		s.log.Error(
 			"error fetch exist tables",
+			"op",
+			op,
 			"err",
 			err,
 			"tableName",
@@ -206,6 +233,7 @@ func (s *SqliteWriteStorage) createTableByReportName(
 	ctx context.Context,
 	tableName string,
 ) error {
+	const op = "sqlite_writer.createTableByReportName"
 	query := fmt.Sprintf(
 		`
     CREATE TABLE IF NOT EXISTS %s (
@@ -222,6 +250,8 @@ func (s *SqliteWriteStorage) createTableByReportName(
 	if err != nil {
 		s.log.Error(
 			"failed to execute create table statement",
+			"op",
+			op,
 			"error",
 			err,
 			"tableName",
@@ -229,7 +259,6 @@ func (s *SqliteWriteStorage) createTableByReportName(
 		)
 		return err
 	}
-
 	return nil
 }
 

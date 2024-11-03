@@ -67,6 +67,7 @@ func (w *Worker) Start(ctx context.Context) {
 			timeStart := time.Now().UTC()
 
 			result := job.ReportFunction(job.TraceId)
+			result.ReportName = job.ReportName
 			w.outputReportChan <- result
 
 			loadTime := time.Since(timeStart)

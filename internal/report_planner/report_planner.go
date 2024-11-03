@@ -11,9 +11,6 @@ import (
 )
 
 const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-const traceIdLength = 16
-const queueSleepTime = 10 * time.Second
-const reportGeneratorChannelBuffer = 100
 
 type AverageLoadingStorage interface {
 	GetAverageLoadingTime(
@@ -27,20 +24,29 @@ type AverageLoadingStorage interface {
 }
 
 type ReportPlanner struct {
-	reportsLocalQueue     *list.List
-	averageLoadingStorage AverageLoadingStorage
-	log                   *slog.Logger
+	reportsLocalQueue            *list.List
+	averageLoadingStorage        AverageLoadingStorage
+	log                          *slog.Logger
+	traceIdLength                int
+	queueSleepTime               int
+	reportGeneratorChannelBuffer int
 }
 
 func NewReportPlanner(
 	logger *slog.Logger,
 	averageLoadingStorage AverageLoadingStorage,
+	traceIdLength int,
+	queueSleepTime int,
+	reportGeneratorChannelBuffer int,
 ) *ReportPlanner {
 	queue := list.New()
 	return &ReportPlanner{
-		reportsLocalQueue:     queue,
-		averageLoadingStorage: averageLoadingStorage,
-		log:                   logger,
+		reportsLocalQueue:            queue,
+		averageLoadingStorage:        averageLoadingStorage,
+		log:                          logger,
+		traceIdLength:                traceIdLength,
+		queueSleepTime:               queueSleepTime,
+		reportGeneratorChannelBuffer: reportGeneratorChannelBuffer,
 	}
 }
 
@@ -85,6 +91,13 @@ func (p *ReportPlanner) Add(
 		reportName,
 	)
 	if err != nil {
+		p.log.Error(
+			"Failed to get average loading time",
+			"ReportName",
+			reportName,
+			"Error",
+			err,
+		)
 		return ""
 	}
 
@@ -104,7 +117,7 @@ func (p *ReportPlanner) Add(
 func (p *ReportPlanner) StartPlannedQueue() <-chan *ReportQueueItem {
 	ch := make(
 		chan *ReportQueueItem,
-		reportGeneratorChannelBuffer,
+		p.reportGeneratorChannelBuffer,
 	)
 
 	go func(log *slog.Logger) {
@@ -112,7 +125,7 @@ func (p *ReportPlanner) StartPlannedQueue() <-chan *ReportQueueItem {
 			currentItem := p.reportsLocalQueue.Front()
 			if currentItem == nil {
 				log.Info("queue is empty, sleep")
-				time.Sleep(queueSleepTime)
+				time.Sleep(time.Duration(p.queueSleepTime) * time.Second)
 				continue
 			}
 			ch <- p.reportsLocalQueue.Remove(currentItem).(*ReportQueueItem)
@@ -170,7 +183,7 @@ func (p *ReportPlanner) addReportItemToQueue(item *ReportQueueItem) {
 func (p *ReportPlanner) generateTraceId() string {
 	b := make(
 		[]byte,
-		traceIdLength,
+		p.traceIdLength,
 	)
 	for i := range b {
 		num, _ := rand.Int(
@@ -197,5 +210,3 @@ func (p *ReportPlanner) GetAllSequence() []*ReportQueueItem {
 		currentItem = currentItem.Next()
 	}
 }
-
-// TODO: implement GracefulStop with store queue

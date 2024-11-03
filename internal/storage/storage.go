@@ -30,13 +30,17 @@ type Storage interface {
 func NewStorage(
 	storageType StorageType,
 	storagePath string,
+	defaultAverageLoadTime int64,
 ) (
 	Storage,
 	error,
 ) {
 	switch storageType {
 	case SQLite:
-		storage, err := sqlite.New(storagePath)
+		storage, err := sqlite.New(
+			storagePath,
+			defaultAverageLoadTime,
+		)
 		return storage, err
 	default:
 		return nil, fmt.Errorf(

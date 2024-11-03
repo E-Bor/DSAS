@@ -2,9 +2,10 @@ package app
 
 import (
 	"DSAS/configs"
-	"DSAS/internal/app/core"
 	grpc_server "DSAS/internal/app/grpc"
 	"DSAS/internal/config"
+	"DSAS/internal/core"
+	"DSAS/internal/dsas_errors"
 	"DSAS/internal/report_loader"
 	"DSAS/internal/report_planner"
 	"DSAS/internal/report_writer"
@@ -16,8 +17,6 @@ import (
 	"os/signal"
 	"syscall"
 )
-
-const workerPoolCount = 3
 
 type App struct {
 	gRPCServer *grpc_server.GRPCServer
@@ -33,14 +32,11 @@ func NewApp(
 	*App,
 	error,
 ) {
-	server := grpc_server.NewGRPCServer(
-		log,
-		dsasConfig.CoreApiConfig.StartupHost,
-	)
-
+	const op = "NewApp"
 	sqlite, err := storage.NewStorage(
 		storage.SQLite,
 		mainConfig.SQLiteStoragePath,
+		dsasConfig.DsasCoreConfig.DefaultAverageLoadTime,
 	)
 	if err != nil {
 		return nil, err
@@ -49,31 +45,43 @@ func NewApp(
 	reportPlanner := report_planner.NewReportPlanner(
 		log,
 		sqlite,
+		dsasConfig.DsasCoreConfig.TraceIdLength,
+		dsasConfig.DsasCoreConfig.QueueSleepTime,
+		dsasConfig.DsasCoreConfig.QueueLength,
 	)
 	queueChannel := reportPlanner.StartPlannedQueue()
 
 	reportLoadWorkerPool := report_loader.New(
 		log,
 		queueChannel,
-		workerPoolCount,
+		dsasConfig.DsasCoreConfig.LoadWorkersCount,
 		sqlite,
+		dsasConfig.DsasCoreConfig.WorkerPoolChannelBufferSize,
+		dsasConfig.DsasCoreConfig.WorkerSleepTime,
 	)
 
 	reportLoadWorkerPool.Start(context.Background())
 
-	reportWriter := report_writer.New(
+	reportWriter, err := report_writer.New(
 		reportLoadWorkerPool.OutputChan,
 		report_writer.SQLiteWriter,
 		mainConfig.SQLiteStoragePath,
 		"report_errors",
 		log,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	reportWriter.StoreAllData()
 
 	reportMap, err := reports_registry.NewReportRegistry(dsasConfig.IntegrationsDir)
 	if err != nil {
-		return nil, err
+		return nil, dsas_errors.NewInternalError(
+			op,
+			err,
+			"failed to create new report registry",
+		)
 	}
 
 	dsasCore := core.New(
@@ -82,6 +90,11 @@ func NewApp(
 		reportPlanner,
 		reportLoadWorkerPool,
 		reportWriter,
+	)
+	server := grpc_server.NewGRPCServer(
+		log,
+		dsasConfig.CoreApiConfig.StartupHost,
+		dsasCore,
 	)
 
 	return &App{

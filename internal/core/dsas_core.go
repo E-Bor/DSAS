@@ -1,10 +1,12 @@
 package core
 
 import (
+	"DSAS/internal/dsas_errors"
 	"DSAS/internal/report_planner"
 	"DSAS/internal/reports_registry"
 	"DSAS/internal/storage"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -61,7 +63,7 @@ func New(
 	}
 }
 
-func (c DSASCore) AddReportToQueue(
+func (c *DSASCore) AddReportToQueue(
 	datasource, reportType string,
 	estimatedDate,
 	dateFrom,
@@ -70,6 +72,34 @@ func (c DSASCore) AddReportToQueue(
 	string,
 	error,
 ) {
+	const op = "core.AddReportToQueue"
+	if datasource == "" || reportType == "" {
+		return "", dsas_errors.NewExternalError(
+			op,
+			errors.New("empty datasource or report type"),
+			"got datasource %s, got report type %s",
+			datasource,
+			reportType,
+		)
+	}
+	if dateFrom.IsZero() || dateTo.IsZero() || dateFrom.After(dateTo) {
+		return "", dsas_errors.NewExternalError(
+			op,
+			errors.New("error date range provided"),
+			"got date from %s, got date to %s",
+			dateFrom.String(),
+			dateTo.String(),
+		)
+	}
+	if estimatedDate.IsZero() {
+		return "", dsas_errors.NewExternalError(
+			op,
+			errors.New("empty estimated date provided"),
+			"got estimated date %s",
+			estimatedDate.String(),
+		)
+	}
+
 	reportFunc, err := c.reportMap.Get(
 		datasource,
 		reportType,
@@ -79,7 +109,7 @@ func (c DSASCore) AddReportToQueue(
 		return "", err
 	}
 	reportName := fmt.Sprintf(
-		"%s-%s",
+		"%s_%s",
 		datasource,
 		reportType,
 	)

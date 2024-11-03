@@ -14,15 +14,17 @@ type GRPCServer struct {
 	port       int
 }
 
-// TODO: Implement auth
-
 func NewGRPCServer(
 	log *slog.Logger,
 	port int,
+	dsasCore reports.DsasCore,
 ) *GRPCServer {
 	server := grpc.NewServer()
 
-	reports.RegisterReport(server)
+	reports.RegisterReport(
+		server,
+		dsasCore,
+	)
 
 	return &GRPCServer{
 		log:        log,

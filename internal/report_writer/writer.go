@@ -1,6 +1,7 @@
 package report_writer
 
 import (
+	"DSAS/internal/dsas_errors"
 	"DSAS/internal/report_writer/sqlite_writer"
 	"DSAS/internal/reports_registry"
 	"log/slog"
@@ -37,7 +38,11 @@ func New(
 	storagePath string,
 	errTableName string,
 	logger *slog.Logger,
-) *Writer {
+) (
+	*Writer,
+	error,
+) {
+	const op = "writer.New"
 
 	var writer Writer
 
@@ -52,15 +57,15 @@ func New(
 			logger,
 		)
 		if err != nil {
-			slog.Default().Error(
-				"Failed to create sqlite writer",
-				"error",
+			return nil, dsas_errors.NewInternalError(
+				op,
 				err,
+				"Failed to create sqlite writer",
 			)
 		}
 		writer.storage = sqlWriter
 	}
-	return &writer
+	return &writer, nil
 }
 
 func (w Writer) StoreAllData() {
