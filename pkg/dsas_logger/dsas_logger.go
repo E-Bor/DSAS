@@ -13,12 +13,6 @@ const (
 	EnvProd  LogLvl = "PROD"
 )
 
-type CustomHandler struct {
-	h     slog.Handler
-	key   string
-	value string
-}
-
 func SetDefaultSlog(logLvl LogLvl) {
 	var logger *slog.Logger
 
@@ -49,7 +43,7 @@ func SetDefaultSlog(logLvl LogLvl) {
 				os.Stdout,
 				&slog.HandlerOptions{
 					Level:     slog.LevelInfo,
-					AddSource: true,
+					AddSource: false,
 				},
 			),
 		)
